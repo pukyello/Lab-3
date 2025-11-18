@@ -1,0 +1,506 @@
+﻿#include <iostream>
+#include <fstream>
+#include <string>
+
+using namespace std;
+
+struct Tree {
+    int data;
+    Tree* left;
+    Tree* right;
+};
+
+struct RBTree {
+    int data;
+    RBTree* left;
+    RBTree* right;
+    RBTree* parent;
+    bool red;
+};
+
+struct Stack {
+    Tree* tree;
+    Stack* next;
+};
+
+struct RBStack {
+    RBTree* tree;
+    RBStack* next;
+};
+
+struct Queue {
+    RBTree* tree;
+    Queue* next;
+};
+
+void push(Stack*& top, Tree* tree) {
+    Stack* new_node = new Stack;
+    new_node->tree = tree;
+    new_node->next = top;
+    top = new_node;
+}
+
+Tree* pop(Stack*& top) {
+    if (top == NULL) return NULL;
+    Tree* result = top->tree;
+    Stack* temp = top;
+    top = top->next;
+    delete temp;
+    return result;
+}
+
+void pushRB(RBStack*& top, RBTree* tree) {
+    RBStack* new_node = new RBStack;
+    new_node->tree = tree;
+    new_node->next = top;
+    top = new_node;
+}
+
+RBTree* popRB(RBStack*& top) {
+    if (top == NULL) return NULL;
+    RBTree* result = top->tree;
+    RBStack* temp = top;
+    top = top->next;
+    delete temp;
+    return result;
+}
+
+void enqueue(Queue*& front, Queue*& rear, RBTree* tree) {
+    Queue* new_node = new Queue;
+    new_node->tree = tree;
+    new_node->next = NULL;
+
+    if (rear == NULL) {
+        front = rear = new_node;
+    }
+    else {
+        rear->next = new_node;
+        rear = new_node;
+    }
+}
+
+RBTree* dequeue(Queue*& front, Queue*& rear) {
+    if (front == NULL) return NULL;
+
+    RBTree* result = front->tree;
+    Queue* temp = front;
+    front = front->next;
+
+    if (front == NULL) rear = NULL;
+
+    delete temp;
+    return result;
+}
+
+bool checkBrackets(string s) {
+    int count = 0;
+    for (int i = 0; i < s.length(); i++) {
+        if (s[i] == '(') count++;
+        if (s[i] == ')') count--;
+        if (count < 0) return false;
+    }
+    return count == 0;
+}
+
+Tree* parseTree(string s, int& pos, bool& valid) {
+    while (pos < s.length() && s[pos] == ' ') pos++;
+
+    if (pos >= s.length() || s[pos] != '(') {
+        valid = false;
+        return NULL;
+    }
+    pos++;
+
+    while (pos < s.length() && s[pos] == ' ') pos++;
+
+    if (pos >= s.length() || !(s[pos] == '-' || (s[pos] >= '0' && s[pos] <= '9'))) {
+        valid = false;
+        return NULL;
+    }
+
+    int num = 0;
+    bool negative = false;
+
+    if (s[pos] == '-') {
+        negative = true;
+        pos++;
+    }
+
+    while (pos < s.length() && s[pos] >= '0' && s[pos] <= '9') {
+        num = num * 10 + (s[pos] - '0');
+        pos++;
+    }
+
+    if (negative) num = -num;
+
+    Tree* node = new Tree;
+    node->data = num;
+    node->left = NULL;
+    node->right = NULL;
+
+    int childCount = 0;
+    while (pos < s.length() && s[pos] == ' ') pos++;
+
+    while (pos < s.length() && s[pos] == '(') {
+        if (childCount >= 2) {
+            valid = false;
+            return NULL;
+        }
+        if (childCount == 0) {
+            node->left = parseTree(s, pos, valid);
+            if (!valid) return NULL;
+            childCount++;
+        }
+        else {
+            node->right = parseTree(s, pos, valid);
+            if (!valid) return NULL;
+            childCount++;
+        }
+        while (pos < s.length() && s[pos] == ' ') pos++;
+    }
+
+    while (pos < s.length() && s[pos] == ' ') pos++;
+
+    if (pos >= s.length() || s[pos] != ')') {
+        valid = false;
+        return NULL;
+    }
+    pos++;
+
+    return node;
+}
+
+void preorderRecursive(Tree* root) {
+    if (root == NULL) return;
+    cout << root->data << " ";
+    preorderRecursive(root->left);
+    preorderRecursive(root->right);
+}
+
+void inorderRecursive(Tree* root) {
+    if (root == NULL) return;
+    inorderRecursive(root->left);
+    cout << root->data << " ";
+    inorderRecursive(root->right);
+}
+
+void postorderRecursive(Tree* root) {
+    if (root == NULL) return;
+    postorderRecursive(root->left);
+    postorderRecursive(root->right);
+    cout << root->data << " ";
+}
+
+void leftRotate(RBTree*& root, RBTree* x) {
+    RBTree* y = x->right;
+    x->right = y->left;
+
+    if (y->left != NULL) y->left->parent = x;
+    y->parent = x->parent;
+
+    if (x->parent == NULL) root = y;
+    else if (x == x->parent->left) x->parent->left = y;
+    else x->parent->right = y;
+
+    y->left = x;
+    x->parent = y;
+}
+
+void rightRotate(RBTree*& root, RBTree* y) {
+    RBTree* x = y->left;
+    y->left = x->right;
+
+    if (x->right != NULL) x->right->parent = y;
+    x->parent = y->parent;
+
+    if (y->parent == NULL) root = x;
+    else if (y == y->parent->right) y->parent->right = x;
+    else y->parent->left = x;
+
+    x->right = y;
+    y->parent = x;
+}
+
+void fixTree(RBTree*& root, RBTree* node) {
+    while (node != root && node->parent->red) {
+        if (node->parent == node->parent->parent->left) {
+            RBTree* uncle = node->parent->parent->right;
+
+            if (uncle != NULL && uncle->red) {
+                node->parent->red = false;
+                uncle->red = false;
+                node->parent->parent->red = true;
+                node = node->parent->parent;
+            }
+            else {
+                if (node == node->parent->right) {
+                    node = node->parent;
+                    leftRotate(root, node);
+                }
+                node->parent->red = false;
+                node->parent->parent->red = true;
+                rightRotate(root, node->parent->parent);
+            }
+        }
+        else {
+            RBTree* uncle = node->parent->parent->left;
+
+            if (uncle != NULL && uncle->red) {
+                node->parent->red = false;
+                uncle->red = false;
+                node->parent->parent->red = true;
+                node = node->parent->parent;
+            }
+            else {
+                if (node == node->parent->left) {
+                    node = node->parent;
+                    rightRotate(root, node);
+                }
+                node->parent->red = false;
+                node->parent->parent->red = true;
+                leftRotate(root, node->parent->parent);
+            }
+        }
+    }
+    root->red = false;
+}
+
+RBTree* insertRB(RBTree* root, int value) {
+    RBTree* new_node = new RBTree;
+    new_node->data = value;
+    new_node->red = true;
+    new_node->left = NULL;
+    new_node->right = NULL;
+    new_node->parent = NULL;
+
+    if (root == NULL) {
+        new_node->red = false;
+        return new_node;
+    }
+
+    RBTree* parent = NULL;
+    RBTree* current = root;
+
+    while (current != NULL) {
+        parent = current;
+        if (value < current->data) current = current->left;
+        else if (value > current->data) current = current->right;
+        else {
+            delete new_node;
+            return root;
+        }
+    }
+
+    new_node->parent = parent;
+    if (value < parent->data) parent->left = new_node;
+    else parent->right = new_node;
+
+    fixTree(root, new_node);
+    return root;
+}
+
+bool searchRB(RBTree* root, int value) {
+    RBTree* current = root;
+    while (current != NULL) {
+        if (value == current->data) return true;
+        else if (value < current->data) current = current->left;
+        else current = current->right;
+    }
+    return false;
+}
+
+void BFS(RBTree* root) {
+    if (root == NULL) return;
+
+    Queue* front = NULL;
+    Queue* rear = NULL;
+    enqueue(front, rear, root);
+
+    while (front != NULL) {
+        RBTree* current = dequeue(front, rear);
+
+        if (current->red) cout << "\033[1;31m" << current->data << "\033[0m ";
+        else cout << current->data << " ";
+
+        if (current->left != NULL) enqueue(front, rear, current->left);
+        if (current->right != NULL) enqueue(front, rear, current->right);
+    }
+}
+
+void preorder(RBTree* root) {
+    if (root == NULL) return;
+
+    RBStack* stack = NULL;
+    pushRB(stack, root);
+
+    while (stack != NULL) {
+        RBTree* current = popRB(stack);
+
+        if (current->red) cout << "\033[1;31m" << current->data << "\033[0m ";
+        else cout << current->data << " ";
+
+        if (current->right != NULL) pushRB(stack, current->right);
+        if (current->left != NULL) pushRB(stack, current->left);
+    }
+}
+
+void inorder(RBTree* root) {
+    RBStack* stack = NULL;
+    RBTree* current = root;
+
+    while (current != NULL || stack != NULL) {
+        while (current != NULL) {
+            pushRB(stack, current);
+            current = current->left;
+        }
+
+        current = popRB(stack);
+
+        if (current->red) cout << "\033[1;31m" << current->data << "\033[0m ";
+        else cout << current->data << " ";
+
+        current = current->right;
+    }
+}
+
+void postorder(RBTree* root) {
+    if (root == NULL) return;
+
+    RBStack* s1 = NULL;
+    RBStack* s2 = NULL;
+    pushRB(s1, root);
+
+    while (s1 != NULL) {
+        RBTree* current = popRB(s1);
+        pushRB(s2, current);
+
+        if (current->left != NULL) pushRB(s1, current->left);
+        if (current->right != NULL) pushRB(s1, current->right);
+    }
+
+    while (s2 != NULL) {
+        RBTree* current = popRB(s2);
+
+        if (current->red) cout << "\033[1;31m" << current->data << "\033[0m ";
+        else cout << current->data << " ";
+    }
+}
+
+RBTree* makeRB(Tree* root) {
+    if (root == NULL) return NULL;
+
+    RBTree* rb_root = NULL;
+    Stack* stack = NULL;
+    push(stack, root);
+
+    while (stack != NULL) {
+        Tree* current = pop(stack);
+        rb_root = insertRB(rb_root, current->data);
+
+        if (current->right != NULL) push(stack, current->right);
+        if (current->left != NULL) push(stack, current->left);
+    }
+
+    return rb_root;
+}
+
+void freeTree(Tree* root) {
+    if (root == NULL) return;
+    freeTree(root->left);
+    freeTree(root->right);
+    delete root;
+}
+
+void freeRBTree(RBTree* root) {
+    if (root == NULL) return;
+    freeRBTree(root->left);
+    freeRBTree(root->right);
+    delete root;
+}
+
+int main() {
+    setlocale(LC_ALL, "Rus");
+    cout << "=== Парсер деревьев и RB-дерево ===" << endl;
+
+    ifstream file("mytree.txt");
+    string input;
+    if (file.is_open()) {
+        getline(file, input);
+        file.close();
+        cout << "Файл успешно прочитан" << endl;
+    }
+    else {
+        input = "(8 (9 (5)) (1))";
+        cout << "Файл не найден, используется пример по умолчанию" << endl;
+    }
+
+    cout << "Входная строка: " << input << endl;
+
+    if (!checkBrackets(input)) {
+        cout << "Ошибка: неправильные скобки" << endl;
+        return 1;
+    }
+
+    int pos = 0;
+    bool valid = true;
+    Tree* my_tree = parseTree(input, pos, valid);
+
+    if (!valid || my_tree == NULL) {
+        cout << "Ошибка парсинга: не двоичное дерево или неправильный формат" << endl;
+        return 1;
+    }
+
+    cout << "\nРекурсивные обходы исходного дерева:" << endl;
+    cout << "Pre-order:  ";
+    preorderRecursive(my_tree);
+    cout << endl;
+
+    cout << "In-order:   ";
+    inorderRecursive(my_tree);
+    cout << endl;
+
+    cout << "Post-order: ";
+    postorderRecursive(my_tree);
+    cout << endl;
+
+    cout << "\nПостроение красно-черного дерева..." << endl;
+    RBTree* rb_tree = makeRB(my_tree);
+
+    cout << "\nОбходы красно-черного дерева:" << endl;
+    cout << "1) BFS (в ширину):           ";
+    BFS(rb_tree);
+    cout << endl;
+
+    cout << "2) Pre-order (прямой):       ";
+    preorder(rb_tree);
+    cout << endl;
+
+    cout << "3) In-order (симметричный):  ";
+    inorder(rb_tree);
+    cout << endl;
+
+    cout << "4) Post-order (обратный):    ";
+    postorder(rb_tree);
+    cout << endl;
+
+    cout << "\nДемонстрация операций с RB-деревом:" << endl;
+    if (my_tree) {
+        int demoValue = my_tree->data;
+        cout << "Поиск " << demoValue << ": " << (searchRB(rb_tree, demoValue) ? "найден" : "не найден") << endl;
+
+        int testValue = 999;
+        cout << "Поиск " << testValue << ": " << (searchRB(rb_tree, testValue) ? "найден" : "не найден") << endl;
+    }
+
+    cout << "\nУзлы:" << endl;
+    cout << "Красный - красные узлы RB-дерева" << endl;
+    cout << "Черный - черные узлы RB-дерева" << endl;
+
+    freeTree(my_tree);
+    freeRBTree(rb_tree);
+
+    cout << "\nПрограмма завершена. Нажмите Enter для выхода...";
+    cin.get();
+
+    return 0;
+}
