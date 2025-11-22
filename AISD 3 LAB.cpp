@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <fstream>
 #include <string>
 
@@ -420,24 +420,24 @@ void freeRBTree(RBTree* root) {
 
 int main() {
     setlocale(LC_ALL, "Rus");
-    cout << "=== Парсер деревьев и RB-дерево ===" << endl;
+    cout << "=== Tree Parser and RB-Tree ===" << endl;
 
     ifstream file("mytree.txt");
     string input;
     if (file.is_open()) {
         getline(file, input);
         file.close();
-        cout << "Файл успешно прочитан" << endl;
+        cout << "File read successfully" << endl;
     }
     else {
         input = "(8 (9 (5)) (1))";
-        cout << "Файл не найден, используется пример по умолчанию" << endl;
+        cout << "File not found, using default example" << endl;
     }
 
-    cout << "Входная строка: " << input << endl;
+    cout << "Input string: " << input << endl;
 
     if (!checkBrackets(input)) {
-        cout << "Ошибка: неправильные скобки" << endl;
+        cout << "Error: incorrect brackets" << endl;
         return 1;
     }
 
@@ -446,11 +446,11 @@ int main() {
     Tree* my_tree = parseTree(input, pos, valid);
 
     if (!valid || my_tree == NULL) {
-        cout << "Ошибка парсинга: не двоичное дерево или неправильный формат" << endl;
+        cout << "Parsing error: not a binary tree or incorrect format" << endl;
         return 1;
     }
 
-    cout << "\nРекурсивные обходы исходного дерева:" << endl;
+    cout << "\nRecursive traversals of the original tree:" << endl;
     cout << "Pre-order:  ";
     preorderRecursive(my_tree);
     cout << endl;
@@ -463,43 +463,43 @@ int main() {
     postorderRecursive(my_tree);
     cout << endl;
 
-    cout << "\nПостроение красно-черного дерева..." << endl;
+    cout << "\nBuilding Red-Black tree..." << endl;
     RBTree* rb_tree = makeRB(my_tree);
 
-    cout << "\nОбходы красно-черного дерева:" << endl;
-    cout << "1) BFS (в ширину):           ";
+    cout << "\nRed-Black tree traversals:" << endl;
+    cout << "1) BFS (breadth-first):      ";
     BFS(rb_tree);
     cout << endl;
 
-    cout << "2) Pre-order (прямой):       ";
+    cout << "2) Pre-order:                ";
     preorder(rb_tree);
     cout << endl;
 
-    cout << "3) In-order (симметричный):  ";
+    cout << "3) In-order:                 ";
     inorder(rb_tree);
     cout << endl;
 
-    cout << "4) Post-order (обратный):    ";
+    cout << "4) Post-order:               ";
     postorder(rb_tree);
     cout << endl;
 
-    cout << "\nДемонстрация операций с RB-деревом:" << endl;
+    cout << "\nDemonstration of RB-tree operations:" << endl;
     if (my_tree) {
         int demoValue = my_tree->data;
-        cout << "Поиск " << demoValue << ": " << (searchRB(rb_tree, demoValue) ? "найден" : "не найден") << endl;
+        cout << "Search " << demoValue << ": " << (searchRB(rb_tree, demoValue) ? "found" : "not found") << endl;
 
         int testValue = 999;
-        cout << "Поиск " << testValue << ": " << (searchRB(rb_tree, testValue) ? "найден" : "не найден") << endl;
+        cout << "Search " << testValue << ": " << (searchRB(rb_tree, testValue) ? "found" : "not found") << endl;
     }
 
-    cout << "\nУзлы:" << endl;
-    cout << "Красный - красные узлы RB-дерева" << endl;
-    cout << "Черный - черные узлы RB-дерева" << endl;
+    cout << "\nNodes:" << endl;
+    cout << "Red - red nodes of the RB-tree" << endl;
+    cout << "Black - black nodes of the RB-tree" << endl;
 
     freeTree(my_tree);
     freeRBTree(rb_tree);
 
-    cout << "\nПрограмма завершена. Нажмите Enter для выхода...";
+    cout << "\nProgram completed. Press Enter to exit...";
     cin.get();
 
     return 0;
