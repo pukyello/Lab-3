@@ -222,7 +222,7 @@ void rightRotate(RBTree*& root, RBTree* y) {
 }
 
 void fixTree(RBTree*& root, RBTree* node) {
-    while (node != root && node->parent->red) {
+    while (node != root && node->parent != NULL && node->parent->red) {
         if (node->parent == node->parent->parent->left) {
             RBTree* uncle = node->parent->parent->right;
 
@@ -295,7 +295,15 @@ RBTree* insertRB(RBTree* root, int value) {
     if (value < parent->data) parent->left = new_node;
     else parent->right = new_node;
 
-    fixTree(root, new_node);
+    if (new_node->parent->parent != NULL) {
+        fixTree(root, new_node);
+    }
+
+    while (root->parent != NULL) {
+        root = root->parent;
+    }
+    root->red = false;
+
     return root;
 }
 
@@ -319,8 +327,8 @@ void BFS(RBTree* root) {
     while (front != NULL) {
         RBTree* current = dequeue(front, rear);
 
-        if (current->red) cout << "\033[1;31m" << current->data << "\033[0m ";
-        else cout << current->data << " ";
+        if (current->red) cout << current->data << "R ";
+        else cout << current->data << "B ";
 
         if (current->left != NULL) enqueue(front, rear, current->left);
         if (current->right != NULL) enqueue(front, rear, current->right);
@@ -336,8 +344,8 @@ void preorder(RBTree* root) {
     while (stack != NULL) {
         RBTree* current = popRB(stack);
 
-        if (current->red) cout << "\033[1;31m" << current->data << "\033[0m ";
-        else cout << current->data << " ";
+        if (current->red) cout << current->data << "R ";
+        else cout << current->data << "B ";
 
         if (current->right != NULL) pushRB(stack, current->right);
         if (current->left != NULL) pushRB(stack, current->left);
@@ -356,8 +364,8 @@ void inorder(RBTree* root) {
 
         current = popRB(stack);
 
-        if (current->red) cout << "\033[1;31m" << current->data << "\033[0m ";
-        else cout << current->data << " ";
+        if (current->red) cout << current->data << "R ";
+        else cout << current->data << "B ";
 
         current = current->right;
     }
@@ -381,8 +389,77 @@ void postorder(RBTree* root) {
     while (s2 != NULL) {
         RBTree* current = popRB(s2);
 
-        if (current->red) cout << "\033[1;31m" << current->data << "\033[0m ";
-        else cout << current->data << " ";
+        if (current->red) cout << current->data << "R ";
+        else cout << current->data << "B ";
+    }
+}
+
+bool checkRBProperties(RBTree* root, int& blackCount, int currentBlack, bool& valid) {
+    if (root == NULL) {
+        if (blackCount == -1) blackCount = currentBlack;
+        else if (currentBlack != blackCount) valid = false;
+        return true;
+    }
+
+    if (root->red) {
+        if ((root->left != NULL && root->left->red) ||
+            (root->right != NULL && root->right->red)) {
+            valid = false;
+        }
+    }
+
+    int newBlack = currentBlack + (root->red ? 0 : 1);
+
+    return checkRBProperties(root->left, blackCount, newBlack, valid) &&
+        checkRBProperties(root->right, blackCount, newBlack, valid);
+}
+
+void validateRBTree(RBTree* root) {
+    if (root == NULL) {
+        cout << "Tree is empty" << endl;
+        return;
+    }
+
+    if (root->red) {
+        cout << "VIOLATION: Root is red!" << endl;
+    }
+    else {
+        cout << "Property 1: Root is black - OK" << endl;
+    }
+
+    int blackCount = -1;
+    bool valid = true;
+    checkRBProperties(root, blackCount, 0, valid);
+
+    if (valid) {
+        cout << "Property 5: All paths have same number of black nodes (" << blackCount << ") - OK" << endl;
+    }
+    else {
+        cout << "VIOLATION: Different number of black nodes in paths!" << endl;
+    }
+
+    valid = true;
+    Queue* front = NULL;
+    Queue* rear = NULL;
+    enqueue(front, rear, root);
+
+    while (front != NULL) {
+        RBTree* current = dequeue(front, rear);
+
+        if (current->red) {
+            if ((current->left != NULL && current->left->red) ||
+                (current->right != NULL && current->right->red)) {
+                valid = false;
+                cout << "VIOLATION: Red node " << current->data << " has red child!" << endl;
+            }
+        }
+
+        if (current->left != NULL) enqueue(front, rear, current->left);
+        if (current->right != NULL) enqueue(front, rear, current->right);
+    }
+
+    if (valid) {
+        cout << "Property 3: Red nodes have only black children - OK" << endl;
     }
 }
 
@@ -430,8 +507,8 @@ int main() {
         cout << "File read successfully" << endl;
     }
     else {
-        input = "(8 (9 (5)) (1))";
-        cout << "File not found, using default example" << endl;
+        input = "(5 (3 (2) (4)) (7 (6) (8)))";
+        cout << "File not found, using default example: " << input << endl;
     }
 
     cout << "Input string: " << input << endl;
@@ -483,6 +560,9 @@ int main() {
     postorder(rb_tree);
     cout << endl;
 
+    cout << "\nValidating RB-tree properties..." << endl;
+    validateRBTree(rb_tree);
+
     cout << "\nDemonstration of RB-tree operations:" << endl;
     if (my_tree) {
         int demoValue = my_tree->data;
@@ -492,9 +572,9 @@ int main() {
         cout << "Search " << testValue << ": " << (searchRB(rb_tree, testValue) ? "found" : "not found") << endl;
     }
 
-    cout << "\nNodes:" << endl;
-    cout << "Red - red nodes of the RB-tree" << endl;
-    cout << "Black - black nodes of the RB-tree" << endl;
+    cout << "\nNode:" << endl;
+    cout << "NumberR - red nodes of the RB-tree" << endl;
+    cout << "NumberB - black nodes of the RB-tree" << endl;
 
     freeTree(my_tree);
     freeRBTree(rb_tree);
