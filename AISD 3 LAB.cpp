@@ -307,6 +307,184 @@ RBTree* insertRB(RBTree* root, int value) {
     return root;
 }
 
+RBTree* findMin(RBTree* node) {
+    while (node->left != NULL) {
+        node = node->left;
+    }
+    return node;
+}
+
+void transplant(RBTree*& root, RBTree* u, RBTree* v) {
+    if (u->parent == NULL) {
+        root = v;
+    }
+    else if (u == u->parent->left) {
+        u->parent->left = v;
+    }
+    else {
+        u->parent->right = v;
+    }
+    if (v != NULL) {
+        v->parent = u->parent;
+    }
+}
+
+void fixDelete(RBTree*& root, RBTree* x) {
+    while (x != root && (x == NULL || !x->red)) {
+        if (x == x->parent->left) {
+            RBTree* w = x->parent->right;
+
+            if (w != NULL && w->red) {
+                w->red = false;
+                x->parent->red = true;
+                leftRotate(root, x->parent);
+                w = x->parent->right;
+            }
+
+            if (w != NULL &&
+                (w->left == NULL || !w->left->red) &&
+                (w->right == NULL || !w->right->red)) {
+                if (w != NULL) w->red = true;
+                x = x->parent;
+            }
+            else {
+                if (w != NULL && (w->right == NULL || !w->right->red)) {
+                    if (w->left != NULL) w->left->red = false;
+                    if (w != NULL) w->red = true;
+                    rightRotate(root, w);
+                    w = x->parent->right;
+                }
+
+                if (w != NULL) {
+                    w->red = x->parent->red;
+                    x->parent->red = false;
+                    if (w->right != NULL) w->right->red = false;
+                    leftRotate(root, x->parent);
+                }
+                x = root;
+            }
+        }
+        else {
+            RBTree* w = x->parent->left;
+
+            if (w != NULL && w->red) {
+                w->red = false;
+                x->parent->red = true;
+                rightRotate(root, x->parent);
+                w = x->parent->left;
+            }
+
+            if (w != NULL &&
+                (w->right == NULL || !w->right->red) &&
+                (w->left == NULL || !w->left->red)) {
+                if (w != NULL) w->red = true;
+                x = x->parent;
+            }
+            else {
+                if (w != NULL && (w->left == NULL || !w->left->red)) {
+                    if (w->right != NULL) w->right->red = false;
+                    if (w != NULL) w->red = true;
+                    leftRotate(root, w);
+                    w = x->parent->left;
+                }
+
+                if (w != NULL) {
+                    w->red = x->parent->red;
+                    x->parent->red = false;
+                    if (w->left != NULL) w->left->red = false;
+                    rightRotate(root, x->parent);
+                }
+                x = root;
+            }
+        }
+    }
+
+    if (x != NULL) x->red = false;
+}
+
+RBTree* deleteRB(RBTree* root, int value) {
+    if (root == NULL) return root;
+
+    RBTree* node = root;
+    RBTree* x = NULL;
+    RBTree* y = NULL;
+    bool yOriginalRed;
+
+    while (node != NULL) {
+        if (value == node->data) {
+            break;
+        }
+        else if (value < node->data) {
+            node = node->left;
+        }
+        else {
+            node = node->right;
+        }
+    }
+
+    if (node == NULL) return root;
+
+    y = node;
+    yOriginalRed = y->red;
+
+    if (node->left == NULL) {
+        x = node->right;
+        transplant(root, node, node->right);
+    }
+    else if (node->right == NULL) {
+        x = node->left;
+        transplant(root, node, node->left);
+    }
+    else {
+        y = findMin(node->right);
+        yOriginalRed = y->red;
+        x = y->right;
+
+        if (y->parent == node) {
+            if (x != NULL) x->parent = y;
+        }
+        else {
+            transplant(root, y, y->right);
+            y->right = node->right;
+            if (y->right != NULL) y->right->parent = y;
+        }
+
+        transplant(root, node, y);
+        y->left = node->left;
+        if (y->left != NULL) y->left->parent = y;
+        y->red = node->red;
+    }
+
+    delete node;
+
+    if (!yOriginalRed) {
+        if (x != NULL) {
+            fixDelete(root, x);
+        }
+        else {
+            RBTree* dummy = new RBTree;
+            dummy->red = false;
+            dummy->parent = (y->parent != NULL) ? y->parent : NULL;
+            dummy->left = dummy->right = NULL;
+            if (dummy->parent != NULL) {
+                if (y->parent->left == NULL) dummy->parent->left = dummy;
+                else if (y->parent->right == NULL) dummy->parent->right = dummy;
+            }
+            fixDelete(root, dummy);
+            if (dummy->parent != NULL) {
+                if (dummy->parent->left == dummy) dummy->parent->left = NULL;
+                else if (dummy->parent->right == dummy) dummy->parent->right = NULL;
+            }
+            delete dummy;
+        }
+    }
+
+    while (root != NULL && root->parent != NULL) {
+        root = root->parent;
+    }
+    return root;
+}
+
 bool searchRB(RBTree* root, int value) {
     RBTree* current = root;
     while (current != NULL) {
@@ -570,6 +748,31 @@ int main() {
 
         int testValue = 999;
         cout << "Search " << testValue << ": " << (searchRB(rb_tree, testValue) ? "found" : "not found") << endl;
+    }
+
+    cout << "\n=== Demonstration of deletion ===" << endl;
+    if (rb_tree != NULL) {
+        cout << "Original tree: ";
+        BFS(rb_tree);
+        cout << endl;
+
+        int nodesToDelete[] = { 3, 7 };
+        for (int i = 0; i < 2; i++) {
+            int deleteValue = nodesToDelete[i];
+            if (searchRB(rb_tree, deleteValue)) {
+                cout << "\nDeleting node " << deleteValue << ":" << endl;
+                rb_tree = deleteRB(rb_tree, deleteValue);
+                cout << "Tree after deletion: ";
+                BFS(rb_tree);
+                cout << endl;
+
+                cout << "Validation after deletion:" << endl;
+                validateRBTree(rb_tree);
+            }
+            else {
+                cout << "Node " << deleteValue << " not found for deletion" << endl;
+            }
+        }
     }
 
     cout << "\nNode:" << endl;
